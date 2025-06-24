@@ -31,7 +31,7 @@
         <h2>Gerador de Link de Busca - ComprasNet</h2>
         <div class="form-group">
             <label for="termo">Termo de Busca:</label>
-            <input type="text" id="termo" placeholder="Digite o termo de busca">
+            <input type="text" id="termo" placeholder="Digite o termo de busca (ex: 'material escolar')">
         </div>
         
         <div class="form-group">
@@ -74,10 +74,8 @@
     <script>
         // Função para formatar a data automaticamente
         function formatarData(input) {
-            // Remove tudo que não é número
             let value = input.value.replace(/\D/g, '');
             
-            // Aplica a máscara DD/MM/AAAA
             if (value.length > 2) {
                 value = value.substring(0, 2) + '/' + value.substring(2);
             }
@@ -87,7 +85,6 @@
             
             input.value = value;
             
-            // Atualiza a classe para mostrar/ocultar o placeholder
             const container = input.parentElement;
             if (input.value === '') {
                 container.classList.add('empty');
@@ -96,7 +93,6 @@
             }
         }
         
-        // Restringe o input para apenas números e teclas de controle
         function restrictInput(event) {
             const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'];
             if (!event.key.match(/[0-9]/) && !allowedKeys.includes(event.key)) {
@@ -104,7 +100,6 @@
             }
         }
         
-        // Valida se a data está no formato correto
         function validarData(data) {
             const regex = /^\d{2}\/\d{2}\/\d{4}$/;
             if (!regex.test(data)) return false;
@@ -120,19 +115,16 @@
         }
         
         function gerarLink() {
-            // Obter valores dos campos
-            const termo = document.getElementById('termo').value;
+            const termo = document.getElementById('termo').value.trim();
             const dataIni = document.getElementById('dataIni').value;
             const dataFim = document.getElementById('dataFim').value;
             const tipoPesquisa = document.querySelector('input[name="tipoPesquisa"]:checked').value;
             
-            // Validar campos obrigatórios
             if (!termo) {
                 alert("Por favor, informe o termo de busca!");
                 return;
             }
             
-            // Validar datas
             if (dataIni && !validarData(dataIni)) {
                 alert("Data inicial inválida! Use o formato DD/MM/AAAA.");
                 return;
@@ -143,15 +135,13 @@
                 return;
             }
             
-            // Codificar os valores para URL
-            const termoEncoded = encodeURIComponent(termo);
+            // Codificação específica para o ComprasNet (espaços como %20, não como +)
+            const termoEncoded = encodeURIComponent(termo).replace(/%20/g, '+');
             const dataIniEncoded = dataIni ? encodeURIComponent(dataIni) : '';
             const dataFimEncoded = dataFim ? encodeURIComponent(dataFim) : '';
             
-            // URL base do ComprasNet
             const baseUrl = "http://comprasnet.gov.br/ConsultaLicitacoes/ConsLicitacao_texto.asp?";
             
-            // Configurar parâmetros de tipo de pesquisa
             let paramsMaterial = "";
             let paramsServico = "";
             
@@ -166,7 +156,6 @@
                 paramsServico = "optTpPesqServ=S";
             }
             
-            // Montar os parâmetros
             const parametros = [
                 `txtTermo=${termoEncoded}`,
                 "chkTipoBusca=1",
@@ -188,18 +177,23 @@
                 "Origem=F"
             ].filter(p => p !== '').join("&");
             
-            // URL completa
             const urlCompleta = baseUrl + parametros;
             
-            // Exibir o resultado
             document.getElementById('result').innerHTML = `
-                <strong>Link gerado:</strong><br>
+                <strong>Link gerado para o ComprasNet:</strong><br>
                 <a href="${urlCompleta}" target="_blank">${urlCompleta}</a>
                 <p><small>Clique com o botão direito e selecione "Copiar link" para compartilhar.</small></p>
+                <button onclick="copiarLink()" style="margin-top: 10px;">Copiar Link</button>
             `;
         }
         
-        // Inicializa os placeholders
+        function copiarLink() {
+            const link = document.querySelector('#result a').href;
+            navigator.clipboard.writeText(link)
+                .then(() => alert("Link copiado para a área de transferência!"))
+                .catch(err => console.error('Erro ao copiar:', err));
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const dateInputs = document.querySelectorAll('.date-input');
             dateInputs.forEach(container => {
