@@ -31,7 +31,7 @@
         <h2>Gerador de Link de Busca - ComprasNet</h2>
         <div class="form-group">
             <label for="termo">Termo de Busca:</label>
-            <input type="text" id="termo" placeholder="Digite o termo de busca (ex: 'material escolar')">
+            <input type="text" id="termo" placeholder="Digite o termo (ex: manutenção)">
         </div>
         
         <div class="form-group">
@@ -56,13 +56,6 @@
             <label for="dataIni">Data de Publicação Inicial:</label>
             <div class="date-input" id="dateIniContainer">
                 <input type="text" id="dataIni" maxlength="10" placeholder=" " 
-                       oninput="formatarData(this)" onkeydown="restrictInput(event)">
-            </div>
-        </div>
-        <div class="form-group">
-            <label for="dataFim">Data de Publicação Final:</label>
-            <div class="date-input" id="dateFimContainer">
-                <input type="text" id="dataFim" maxlength="10" placeholder=" " 
                        oninput="formatarData(this)" onkeydown="restrictInput(event)">
             </div>
         </div>
@@ -114,10 +107,32 @@
             );
         }
         
+        // Função para obter data atual no formato DD/MM/AAAA
+        function getDataAtual() {
+            const hoje = new Date();
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const ano = hoje.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        }
+        
+        // Função para codificar caracteres especiais no formato do ComprasNet
+        function codificarTermo(termo) {
+            return termo.split('').map(char => {
+                const code = char.charCodeAt(0);
+                if (code > 127) {
+                    return '%' + code.toString(16).toUpperCase();
+                }
+                if (char === ' ') {
+                    return '+';
+                }
+                return char;
+            }).join('');
+        }
+        
         function gerarLink() {
             const termo = document.getElementById('termo').value.trim();
             const dataIni = document.getElementById('dataIni').value;
-            const dataFim = document.getElementById('dataFim').value;
             const tipoPesquisa = document.querySelector('input[name="tipoPesquisa"]:checked').value;
             
             if (!termo) {
@@ -130,18 +145,15 @@
                 return;
             }
             
-            if (dataFim && !validarData(dataFim)) {
-                alert("Data final inválida! Use o formato DD/MM/AAAA.");
-                return;
-            }
+            // Data final sempre é a data atual
+            const dataFim = getDataAtual();
             
-            // Codificação específica para o ComprasNet (espaços como %20, não como +)
-            const termoEncoded = encodeURIComponent(termo).replace(/%20/g, '+');
-            const dataIniEncoded = dataIni ? encodeURIComponent(dataIni) : '';
-            const dataFimEncoded = dataFim ? encodeURIComponent(dataFim) : '';
+            // Codificação específica para o ComprasNet
+            const termoFormatado = codificarTermo(termo);
+            const dataIniFormatada = dataIni ? dataIni.split('/').join('%2F') : '';
+            const dataFimFormatada = dataFim.split('/').join('%2F');
             
-            const baseUrl = "http://comprasnet.gov.br/ConsultaLicitacoes/ConsLicitacao_texto.asp?";
-            
+            // Configura parâmetros de tipo de pesquisa
             let paramsMaterial = "";
             let paramsServico = "";
             
@@ -156,42 +168,33 @@
                 paramsServico = "optTpPesqServ=S";
             }
             
-            const parametros = [
-                `txtTermo=${termoEncoded}`,
-                "chkTipoBusca=1",
-                "chkTipoBusca=2",
-                "chkTipoBusca=3",
-                dataIni ? `dt_publ_ini=${dataIniEncoded}` : 'dt_publ_ini=',
-                dataFim ? `dt_publ_fim=${dataFimEncoded}` : 'dt_publ_fim=',
-                paramsMaterial,
-                paramsServico,
-                "txtlstUasg=",
-                "txtlstUf=",
-                "txtlstMunicipio=",
-                "txtlstModalidade=",
-                "txtlstGrpMaterial=",
-                "txtlstClasMaterial=",
-                "txtlstMaterial=",
-                "txtlstGrpServico=",
-                "txtlstServico=",
-                "Origem=F"
-            ].filter(p => p !== '').join("&");
-            
-            const urlCompleta = baseUrl + parametros;
+            // Monta a URL completa
+            const urlCompleta = "http://comprasnet.gov.br/ConsultaLicitacoes/ConsLicitacao_texto.asp?" +
+                `txtTermo=${termoFormatado}` +
+                "&chkTipoBusca=1&chkTipoBusca=2&chkTipoBusca=3" +
+                (dataIni ? `&dt_publ_ini=${dataIniFormatada}` : '&dt_publ_ini=') +
+                `&dt_publ_fim=${dataFimFormatada}` +
+                `&${paramsMaterial}&${paramsServico}` +
+                "&txtlstUasg=&txtlstUf=&txtlstMunicipio=" +
+                "&txtlstModalidade=&txtlstGrpMaterial=" +
+                "&txtlstClasMaterial=&txtlstMaterial=" +
+                "&txtlstGrpServico=&txtlstServico=&Origem=F";
             
             document.getElementById('result').innerHTML = `
-                <strong>Link gerado para o ComprasNet:</strong><br>
-                <a href="${urlCompleta}" target="_blank">${urlCompleta}</a>
-                <p><small>Clique com o botão direito e selecione "Copiar link" para compartilhar.</small></p>
-                <button onclick="copiarLink()" style="margin-top: 10px;">Copiar Link</button>
+                <strong>Link gerado:</strong><br>
+                <textarea rows="4" style="width:100%">${urlCompleta}</textarea>
+                <p><button onclick="copiarLink()">Copiar Link</button></p>
+                <p><small>Teste o link: <a href="${urlCompleta}" target="_blank">Abrir no ComprasNet</a></small></p>
+                <p>Termo codificado: ${termoFormatado}</p>
+                <p>Data final automática: ${dataFim}</p>
             `;
         }
         
         function copiarLink() {
-            const link = document.querySelector('#result a').href;
-            navigator.clipboard.writeText(link)
-                .then(() => alert("Link copiado para a área de transferência!"))
-                .catch(err => console.error('Erro ao copiar:', err));
+            const textarea = document.querySelector('#result textarea');
+            textarea.select();
+            document.execCommand('copy');
+            alert("Link copiado para a área de transferência!");
         }
         
         document.addEventListener('DOMContentLoaded', function() {
